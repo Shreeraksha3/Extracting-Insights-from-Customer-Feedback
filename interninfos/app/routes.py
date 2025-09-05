@@ -12,13 +12,71 @@ import MySQLdb.cursors
 
 from . import mysql  # initialized in __init__.py
 
+# NLP + Transformers
+import nltk
+import spacy
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+from nltk.corpus import stopwords
+
+# Init NLP tools
+nltk.download("stopwords")
+stop_words = set(stopwords.words("english"))
+nlp = spacy.load("en_core_web_sm")
+
+# Load sentiment model (supports Positive / Negative / Neutral)
+MODEL_NAME = "cardiffnlp/twitter-roberta-base-sentiment"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+sentiment_analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
+
+#Sentiment mapping helper
+def map_sentiment(label):
+    if str(label).lower() in ["label_0", "0", "negative"]:
+        return "Negative"
+    elif str(label).lower() in ["label_1", "1", "neutral"]:
+        return "Neutral"
+    elif str(label).lower() in ["label_2", "2", "positive"]:
+        return "Positive"
+    return "Neutral"
+# ---------- Text Preprocessing ----------
+import re
+
+def preprocess_text(text: str) -> str:
+    """
+    Clean raw review text before sentiment analysis.
+    - Lowercase
+    - Remove URLs, HTML tags, non-alphanumeric chars
+    - Remove stopwords
+    - Lemmatize with spaCy
+    """
+    if not text:
+        return ""
+
+    # Lowercase
+    text = text.lower()
+
+    # Remove URLs and HTML tags
+    text = re.sub(r"http\S+|www\S+|<.*?>", " ", text)
+
+    # Remove special characters / digits (keep words)
+    text = re.sub(r"[^a-z\s]", " ", text)
+
+    # Tokenize with spaCy
+    doc = nlp(text)
+
+    # Remove stopwords + lemmatize
+    clean_tokens = [
+        token.lemma_ for token in doc 
+        if token.is_alpha and token.text not in stop_words
+    ]
+
+    return " ".join(clean_tokens).strip()
+
 main = Blueprint('main', __name__, url_prefix="/")
 
 # ---------- Helpers ----------
 def dict_cursor():
     return mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-
-
 
 # ---------- Home page ----------
 @main.route("/")
@@ -42,8 +100,8 @@ def login():
             response = redirect(url_for("main.dashboard"))
             set_access_cookies(response, access_token)
 
-            # ✅ Flash after setting cookie
-            session["_flashes"] = []   # clear old flashes
+            # Flash after setting cookie
+            session["_flashes"] = []
             flash("Login successful!", "success")
             return response
 
@@ -55,6 +113,8 @@ def login():
 
 
 # ---------- Admin Login ----------
+from flask_jwt_extended import create_access_token, set_access_cookies
+
 @main.route("/admin_login", methods=["GET", "POST"])
 def admin_login():
     if request.method == "POST":
@@ -67,22 +127,26 @@ def admin_login():
         cursor.close()
 
         if admin and admin["password_hash"] == password:
-            session.clear()
-            session["is_admin"] = True
-            session["_flashes"] = []
+            access_token = create_access_token(identity=username, additional_claims={"role": "admin"})
+            resp = redirect(url_for("main.admin_dashboard"))
+            set_access_cookies(resp, access_token)
             flash("Admin login successful!", "success")
-            return redirect(url_for("main.admin_dashboard"))
+            return resp
 
-        session["_flashes"] = []
         flash("Invalid admin credentials.", "danger")
         return redirect(url_for("main.admin_login"))
 
     return render_template("admin_login.html")
 
 
+
 # ---------- Register ----------
 @main.route("/register", methods=["GET", "POST"])
 def register():
+    error_username = None
+    error_email = None
+    username = ""
+    email = ""
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip().lower()
@@ -93,12 +157,21 @@ def register():
             return redirect(url_for("main.register"))
 
         cursor = dict_cursor()
-        # unique email check
+        # unique check
+        cursor.execute("SELECT user_id FROM users WHERE username=%s", (username,))
+        if cursor.fetchone():
+            error_username = "Username already exists"
         cursor.execute("SELECT user_id FROM users WHERE email=%s", (email,))
         if cursor.fetchone():
-            flash("Email already registered. Please login.", "warning")
+            error_email = "Email already registered"
+
+        if error_username or error_email:
             cursor.close()
-            return redirect(url_for("main.home"))
+            return render_template("register.html",
+                                   error_username=error_username,
+                                   error_email=error_email,
+                                   username=username,
+                                   email=email)
 
         password_hash = generate_password_hash(password)
         cursor.execute(
@@ -112,21 +185,42 @@ def register():
 
     return render_template("register.html")
 
-# ---------- Admin Dashboard ----------
+# Admin Dashboard (User Details + Review Analysis)
+from flask_jwt_extended import get_jwt
+
 @main.route("/admin_dashboard")
+@jwt_required()
 def admin_dashboard():
-    if not session.get("is_admin"):
-        flash("Unauthorized access.", "danger")
-        return redirect(url_for("main.login"))
+    claims = get_jwt()
+    if claims.get("role") != "admin":
+        return {"error": "Unauthorized"}, 403
+
+    
     cursor = dict_cursor()
     cursor.execute("SELECT user_id, username, email FROM users ORDER BY user_id")
     users = cursor.fetchall()
-    # For each user, fetch their reviews
+
     for user in users:
-        cursor.execute("SELECT review_text, uploaded_at FROM reviews WHERE user_id=%s ORDER BY uploaded_at DESC LIMIT 10", (user["user_id"],))
+        cursor.execute("""
+            SELECT review_text, uploaded_at 
+            FROM reviews 
+            WHERE user_id=%s 
+            ORDER BY uploaded_at DESC LIMIT 2
+        """, (user["user_id"],))
         user["reviews"] = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT r.review_id, r.review_text, r.uploaded_at, r.overall_sentiment, 
+               r.overall_sentiment_score, u.username
+        FROM reviews r 
+        JOIN users u ON r.user_id = u.user_id 
+        ORDER BY r.uploaded_at DESC LIMIT 100
+    """)
+    reviews = cursor.fetchall()
     cursor.close()
-    return render_template("admin.html", users=users)
+    
+    return render_template("admin.html", users=users, reviews=reviews)
+
 
 
 
@@ -169,9 +263,9 @@ def profile():
     cursor.execute("SELECT user_id, username, email FROM users WHERE user_id=%s", (user_id,))
     user = cursor.fetchone()
 
-    # ✅ fetch reviews WITH review_id
+    # fetch reviews WITH review_id
     cursor.execute("""
-        SELECT review_id, review_text, uploaded_at
+        SELECT review_id, review_text, uploaded_at, overall_sentiment, overall_sentiment_score
         FROM reviews
         WHERE user_id=%s
         ORDER BY uploaded_at DESC
@@ -190,60 +284,62 @@ def profile():
 def upload_review():
     user_id = get_jwt_identity()
     if request.method == "POST":
-        # Case 1: Raw review text
         raw_review = (request.form.get("raw_review") or "").strip()
+        file = request.files.get("file")
+        rows = []
+
+        # Case 1: raw text
         if raw_review:
-            cursor = dict_cursor()
+            cursor = mysql.connection.cursor()
+            clean_text = preprocess_text(raw_review)
+            result = sentiment_analyzer(clean_text[:512])[0]
+            label, score = result["label"], float(result["score"])
+            sentiment_label = map_sentiment(label)
             cursor.execute("""
                 INSERT INTO reviews (user_id, review_text, product_id, category, uploaded_at, overall_sentiment, overall_sentiment_score)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (user_id, raw_review, None, None, datetime.utcnow(), None, None))
+            """, (user_id, raw_review, None, None, datetime.utcnow(), sentiment_label, score))
             mysql.connection.commit()
             cursor.close()
-            flash("Review submitted successfully!", "success")
+            flash("Review uploaded with sentiment!", "success")
             return redirect(url_for("main.profile"))
 
-        # Case 2: CSV upload
-        file = request.files.get("file")
-        if file and file.filename.lower().endswith(".csv"):
-            try:
-                stream = io.StringIO(file.stream.read().decode("utf-8"))
-                reader = csv.DictReader(stream)
-                if "review_text" not in reader.fieldnames:
-                    flash("CSV must contain a 'review_text' column.", "danger")
-                    return redirect(url_for("main.upload_review"))
+        # Case 2: CSV
+        elif file and file.filename.lower().endswith(".csv"):
+            stream = io.StringIO(file.stream.read().decode("utf-8"))
+            reader = csv.DictReader(stream)
+            if "review_text" not in reader.fieldnames:
+                flash("CSV must contain a 'review_text' column.", "danger")
+                return redirect(url_for("main.upload_review"))
+            for row in reader:
+                text = (row.get("review_text") or "").strip()
+                if text:
+                    clean_text = preprocess_text(text)
+                    result = sentiment_analyzer(clean_text[:512])[0]
+                    label, score = result["label"], float(result["score"])
+                    sentiment_label = map_sentiment(label)
+                    rows.append((user_id, text, None, None, datetime.utcnow(), sentiment_label, score))
 
-                rows = []
-                for row in reader:
-                    text = (row.get("review_text") or "").strip()
-                    if text:
-                        rows.append((user_id, text, None, None, datetime.utcnow(), None, None))
-
-                if not rows:
-                    flash("No valid reviews found in CSV.", "warning")
-                    return redirect(url_for("main.upload_review"))
-
-                cursor = mysql.connection.cursor()
+            if rows:
+                cursor = mysql.connection.cursor()  # Define cursor here before use
                 cursor.executemany("""
                     INSERT INTO reviews (user_id, review_text, product_id, category, uploaded_at, overall_sentiment, overall_sentiment_score)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
                 """, rows)
                 mysql.connection.commit()
                 cursor.close()
-                flash(f"Uploaded {len(rows)} reviews from CSV.", "success")
-            except Exception as e:
-                flash(f"Failed to process CSV: {e}", "danger")
-            return redirect(url_for("main.profile"))
+                flash(f"Uploaded {len(rows)} review(s) with sentiment!", "success")
+                return redirect(url_for("main.profile"))
 
         # If neither provided
-        flash("Please provide raw review text", "warning")    #Please provide raw review text or upload a CSV file.
+        flash("Please provide raw review text or upload a CSV.", "warning")
         return redirect(url_for("main.upload_review"))
 
     # GET: show recent uploads for this user
     cursor = dict_cursor()
     cursor.execute("""
-        SELECT review_text, uploaded_at FROM reviews
-        WHERE user_id=%s ORDER BY uploaded_at DESC LIMIT 20
+        SELECT review_text, uploaded_at, overall_sentiment, overall_sentiment_score 
+        FROM reviews WHERE user_id=%s ORDER BY uploaded_at DESC LIMIT 20
     """, (user_id,))
     reviews = cursor.fetchall()
     cursor.close()
@@ -276,4 +372,5 @@ def logout():
     unset_jwt_cookies(response)
    # flash("You have been logged out.", "info")
     return response
+
 

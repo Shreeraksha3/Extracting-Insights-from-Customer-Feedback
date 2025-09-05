@@ -1,157 +1,397 @@
 {% extends "base.html" %}
+{% block title %}Admin Dashboard | ReviewSense {%endblock %} 
 {% block navbar %}
-<nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background: linear-gradient(90deg, #18132b 80%, #4B0082 100%); font-family: 'Poppins', sans-serif;">
-    <div class="container-fluid">
-        <a class="navbar-brand fw-bold text-white" href="#" style="font-size: 1.7rem; letter-spacing: 1px;">
-            Admin Dashboard
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto align-items-center">
-                <li class="nav-item">
-                    <a class="nav-link text-white fw-semibold px-3" href="{{ url_for('main.logout') }}">Logout</a>
-                </li>
-            </ul>
-        </div>
+<nav
+  class="navbar navbar-expand-lg navbar-dark shadow-sm"
+  style="
+    background: linear-gradient(90deg, #18132b 80%, #4b0082 100%);
+    font-family: 'Poppins', sans-serif;
+  "
+>
+  <div class="container-fluid">
+    <a
+      class="navbar-brand fw-bold text-white"
+      href="#"
+      style="font-size: 1.7rem; letter-spacing: 1px"
+    >
+      Admin Dashboard
+    </a>
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#navbarNav"
+      aria-controls="navbarNav"
+      aria-expanded="false"
+      aria-label="Toggle navigation"
+    >
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto align-items-center">
+        <li class="nav-item">
+          <a
+            class="nav-link text-white fw-semibold px-3"
+            href="{{ url_for('main.logout') }}"
+            >Logout</a
+          >
+        </li>
+      </ul>
     </div>
+  </div>
 </nav>
-{% endblock %}
-
-{% block title %}Admin Dashboard | ReviewSense{% endblock %}
+{% endblock %} 
 
 {% block content %}
+<style>
+  body {
+    font-family: "Poppins", sans-serif;
+    background: linear-gradient(rgba(7, 4, 21, 0.7), #070415),
+      url("https://unsplash.com/photos/focus-photography-of-computer-keyboard-with-red-lights-feXpdV001o4")
+        no-repeat center center/cover;
+    color: #c5c1d9;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 
-    <style>
-    body {
-        font-family: 'Poppins', sans-serif;
-        background: linear-gradient(rgba(7, 4, 21, 0.7), #070415), 
-            url('https://unsplash.com/photos/focus-photography-of-computer-keyboard-with-red-lights-feXpdV001o4') no-repeat center center/cover;
-        color: #c5c1d9;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
+  /* Sidebar */
+  .sidebar {
+    background: #18132b;
+    position: fixed;
+    top: 56px;
+    bottom: 40px;
+    left: 0;
+    width: 220px;
+    padding-top: 20px;
+    overflow-y: auto;
+  }
+  .sidebar .nav-link {
+    color: #c5c1d9;
+    font-weight: 500;
+    padding: 12px 20px;
+    display: block;
+  }
+  .sidebar .nav-link.active,
+  .sidebar .nav-link:hover {
+    background: #4b0082;
+    color: #fff;
+    border-radius: 8px;
+  }
 
-    /* Sidebar placed below navbar */
-    .sidebar {
-        background: #18132b;
-        position: fixed;
-        top: 56px; /* height of navbar */
-        bottom: 40px; /* leave space for footer */
-        left: 0;
-        width: 220px;
-        padding-top: 20px;
-        overflow-y: auto;
-    }
+  .content-area {
+    margin-left: 240px;
+    padding: 2rem;
+  }
 
-    .sidebar .nav-link {
-        color: #c5c1d9;
-        font-weight: 500;
-        padding: 12px 20px;
-        display: block;
-    }
-    .sidebar .nav-link.active, .sidebar .nav-link:hover {
-        background: #4B0082;
-        color: #fff;
-        border-radius: 8px;
-    }
+  .card-box {
+    background: linear-gradient(
+      145deg,
+      rgba(22, 17, 47, 0.7),
+      rgba(15, 12, 32, 0.8)
+    );
+    border-radius: 20px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    padding: 2rem;
+  }
 
-    /* Adjust content so it doesn’t go under sidebar */
-    .content-area {
-        margin-left: 240px;
-        padding: 2rem;
-    }
+  .table {
+    background: #18132b;
+    color: #fff;
+  }
+  .table thead {
+    background: #4b0082;
+    color: #fff;
+  }
 
-    .card-box {
-        background: linear-gradient(145deg, rgba(22, 17, 47, 0.7), rgba(15, 12, 32, 0.8));
-        border-radius: 20px;
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(138, 43, 226, 0.3);
-        padding: 2rem;
-    }
+  /* Analyze Reviews Section */
+  #analyze-reviews .container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 20px auto;
+    background: black;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    padding: 30px;
+    color: #222;
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+  #analyze-reviews .main-content {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+  }
+  #analyze-reviews .left-panel {
+    flex: 2;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding-right: 10px;
+    position: relative;
+  }
+  #analyze-reviews .left-panel .analyzed-title {
+    font-size: 1.8rem;
+    color: #2774f0;
+    font-weight: 600;
+    margin-bottom: 20px;
+    background: black;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 10px 5px;
+    border-bottom: 1px solid #ddd;
+  }
+  #analyze-reviews .right-panel {
+    flex: 1;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: fit-content;
+  }
 
-    .table {
-        background: #18132b;
-        color: #fff;
-    }
-    .table thead {
-        background: #4B0082;
-        color: #fff;
-    }
+  /* Review card */
+  #analyze-reviews .review-card {
+    background: #f5f8fc;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 10px rgba(39, 116, 240, 0.05);
+  }
+  #analyze-reviews .review-text {
+    font-size: 1.07em;
+    margin-bottom: 10px;
+    color: #333;
+  }
+  #analyze-reviews .review-steps span {
+    display: inline-block;
+    background: #e3e8f8;
+    color: #2774f0;
+    padding: 4px 12px;
+    margin-right: 6px;
+    border-radius: 8px;
+    font-size: 0.98em;
+    font-weight: 500;
+  }
+  #analyze-reviews .review-meta {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+  #analyze-reviews .badge-sentiment {
+    font-size: 1rem;
+    padding: 0.4em 1em;
+    border-radius: 14px;
+    font-weight: 600;
+  }
+  .badge-positive { background: #22c55e; color: #fff; }
+  .badge-negative { background: #dc3545; color: #fff; }
+  .badge-neutral { background: #facc15; color: #18132b; }
+  .confidence { color: #666; font-size: 0.97em; }
+
+  /* Sentiment chart */
+  #analyze-reviews .sentiment-chart {
+    background: #f8fafc;
+    margin-top: 24px;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+  }
+  #analyze-reviews .sentiment-chart h4 {
+    color: #2774f0;
+    font-size: 1.08em;
+    margin-bottom: 7px;
+  }
+  #analyze-reviews .chart-placeholder {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: conic-gradient(
+      #36c54d 0 65deg,
+      #ed6755 65deg 120deg,
+      #e2e6ea 120deg 360deg
+    );
+    box-shadow: 0 2px 10px rgba(39, 116, 240, 0.05);
+  }
+
+  /* Sidebar info boxes */
+  #analyze-reviews .sidebar-section {
+    background: #eef4fe;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 10px rgba(39, 116, 240, 0.04);
+  }
+  #analyze-reviews .sidebar-section h4 {
+    color: #2774f0;
+    font-size: 1.02em;
+    margin-bottom: 7px;
+    font-weight: 600;
+  }
+  #analyze-reviews .sidebar-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  #analyze-reviews .sidebar-section ul li {
+    font-size: 0.98em;
+    margin-bottom: 7px;
+    color: #222;
+  }
+
+  /* Mobile responsive */
+  @media (max-width: 900px) {
+    #analyze-reviews .main-content { flex-direction: column; }
+    #analyze-reviews .right-panel { margin-top: 18px; }
+  }
 </style>
 
 <div class="sidebar">
-    <nav class="nav flex-column">
-        <a class="nav-link" data-bs-toggle="tab" href="#user-details">👤 User Details</a>
-        <!-- Future menu items -->
-        <!-- <a class="nav-link" data-bs-toggle="tab" href="#reports">📊 Reports</a> -->
-    </nav>
+  <nav class="nav flex-column">
+    <a class="nav-link" data-bs-toggle="tab" href="#user-details">👤 User Details</a>
+    <a class="nav-link" data-bs-toggle="tab" href="#analyze-reviews">📊 Analyze Reviews</a>
+  </nav>
 </div>
 
 <div class="content-area">
-    <div class="tab-content">
-        <!-- Default: Empty -->
-        <div class="tab-pane fade show active" id="blank">
-            <h4 class="text-muted">Please select a menu item from the left.</h4>
-        </div>
-
-        <!-- User Details -->
-        <div class="tab-pane fade" id="user-details">
-            <div class="card-box">
-                <h3 class="text-white mb-3">User Details</h3>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>User ID</th>
-                                <th>Username</th>
-                                <th>Email</th>
-                                <th>Reviews</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for user in users %}
-                            <tr>
-                                <td>{{ user.user_id }}</td>
-                                <td>{{ user.username }}</td>
-                                <td>{{ user.email }}</td>
-                                <td>
-                                    {% if user.reviews %}
-                                        <ul class="list-group list-group-flush">
-                                            {% for review in user.reviews %}
-                                            <li class="list-group-item">
-                                                <span class="fw-bold">{{ review.uploaded_at.strftime('%Y-%m-%d') }}:</span>
-                                                {{ review.review_text }}
-                                            </li>
-                                            {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        <span class="text-muted">No reviews</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+  <div class="tab-content">
+    <!-- Default Blank -->
+    <div class="tab-pane fade show active" id="blank">
+      <h4 class="text-muted">Please select a menu item from the left.</h4>
     </div>
+
+    <!-- User Details -->
+    <div class="tab-pane fade" id="user-details">
+      <div class="card-box">
+        <h3 class="text-white mb-3">User Details</h3>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Reviews</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in users %}
+              <tr>
+                <td>{{ user.user_id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.email }}</td>
+                <td>
+                  {% if user.reviews %}
+                  <ul class="list-group list-group-flush">
+                    {% for review in user.reviews %}
+                    <li class="list-group-item">
+                      <span class="fw-bold">{{ review.uploaded_at }}</span>: {{ review.review_text }}
+                    </li>
+                    {% endfor %}
+                  </ul>
+                  {% else %}
+                  <span class="text-muted">No reviews</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analyze Reviews -->
+    <div class="tab-pane fade" id="analyze-reviews">
+      <div class="container mt-4">
+        <div class="main-content">
+          <!-- Left Panel: Reviews + Chart -->
+          <div class="left-panel">
+            <h2 class="analyzed-title">Analyzed Reviews ({{ reviews|length }})</h2>
+
+            {% if reviews %} 
+              {% for review in reviews %}
+              <div class="review-card">
+                <div class="review-text">"{{ review.review_text }}"</div>
+                {% if loop.first %}
+                <div class="review-steps">
+                  <span>Original</span>
+                  <span>Cleaned</span>
+                  <span>Tokenized</span>
+                  <span>Processed</span>
+                </div>
+                {% endif %}
+                <div class="review-meta">
+                  {% if review.overall_sentiment and review.overall_sentiment.lower() == "positive" %}
+                  <span class="badge-sentiment badge-positive">Positive</span>
+                  {% elif review.overall_sentiment and review.overall_sentiment.lower() == "negative" %}
+                  <span class="badge-sentiment badge-negative">Negative</span>
+                  {% else %}
+                  <span class="badge-sentiment badge-neutral">{{ review.overall_sentiment or "Neutral" }}</span>
+                  {% endif %}
+                  <span class="confidence">
+                    Confidence: {{ (review.overall_sentiment_score * 100) | round(1) if review.overall_sentiment_score else 'N/A' }}%
+                  </span>
+                </div>
+              </div>
+              {% endfor %} 
+            {% else %}
+              <p class="text-muted">No reviews available.</p>
+            {% endif %}
+
+            <!-- Placeholder for sentiment chart -->
+            <div class="sentiment-chart">
+              <h4>Overall Sentiment Distribution</h4>
+              <div class="chart-placeholder"></div>
+            </div>
+          </div>
+
+          <!-- Right Panel: Side Info -->
+          <div class="right-panel">
+            <div class="sidebar-section">
+              <h4>Text Preprocessing</h4>
+              <ul>
+                <li><b>Text Cleaning:</b> Special chars, emojis</li>
+                <li><b>Tokenization:</b> Word segmentation</li>
+                <li><b>Normalization:</b> Lowercasing</li>
+                <li><b>Stop Words:</b> Removal using NLTK</li>
+              </ul>
+            </div>
+            <div class="sidebar-section">
+              <h4>Sentiment Analysis</h4>
+              <ul>
+                <li><b>Hugging Face</b> Transformers</li>
+                <li><b>Classification:</b> Pos/Neg/Neutral</li>
+                <li><b>Confidence:</b> Scoring</li>
+                <li><b>Real-time:</b> Processing</li>
+              </ul>
+            </div>
+            <div class="sidebar-section last">
+              <h4>Expected Outcome</h4>
+              <ul>
+                <li>Functional preprocessing pipeline</li>
+                <li>Accurate sentiment classification</li>
+                <li>Visual sentiment distribution</li>
+                <li>Working review list interface</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-{% endblock %}
+{% endblock %} 
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Make blank content the default view
-    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-            document.getElementById('blank').classList.remove('show', 'active');
-        });
+  // Hide blank tab after click
+  document.querySelectorAll(".sidebar .nav-link").forEach((link) => {
+    link.addEventListener("click", () => {
+      document.getElementById("blank").classList.remove("show", "active");
     });
+  });
 </script>
 {% endblock %}
